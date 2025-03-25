@@ -1,0 +1,41 @@
+name: CD Pipeline
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build container image
+        run: |
+          docker build -t my-app:latest .
+
+      - name: Push container image
+        run: |
+          docker push my-app:latest
+        env:
+          DOCKER_USERNAME: duongwng
+          DOCKER_PASSWORD: Duong1812004@
+
+      - name: Update deployment manifests
+        run: |
+          # Cập nhật image tag mới trong file manifests/deployment.yaml
+          sed -i 's|my-app:.*|my-app:latest|g' manifests/deployment.yaml
+          git config --global user.email "you@example.com"
+          git config --global user.name "Your Name"
+          git add manifests/deployment.yaml
+          git commit -m "Cập nhật image tag cho deployment"
+          git push origin main
+
+      - name: Trigger ArgoCD Sync (nếu cần)
+        run: |
+          # Sử dụng ArgoCD CLI để trigger đồng bộ (nếu ứng dụng chưa được cấu hình tự động sync)
+          argocd app sync my-app
+        env:
+          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
